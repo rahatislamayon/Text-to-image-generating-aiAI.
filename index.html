@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fun AI Image Generator</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 90%;
+        }
+        .input-area {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #4ecdc4;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .loader {
+            display: none;
+            margin: 20px 0;
+            font-size: 18px;
+            color: #4ecdc4;
+        }
+        #imageContainer {
+            margin: 20px 0;
+            min-height: 200px;
+            text-align: center;
+        }
+        .token-display {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+        img {
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Fun AI Image Generator 🖌️</h1>
+        <div class="input-area">
+            <input type="text" id="promptInput" placeholder="Describe your crazy idea... 🚀">
+            <button onclick="generateImage()">Generate! ✨</button>
+        </div>
+        <div class="loader" id="loader">Generating magic... 🌟</div>
+        <div id="imageContainer">
+            <p>Your amazing image will appear here! 🌈</p>
+        </div>
+        <div class="token-display" id="tokenDisplay"></div>
+    </div>
+
+    <script>
+        const API_KEY = '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'; // Your Hugging Face API key
+        const MODEL_NAME = 'stabilityai/stable-diffusion-2-1'; // Example model for image generation
+
+        async function generateImage() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            const loader = document.getElementById('loader');
+            const imageContainer = document.getElementById('imageContainer');
+            const tokenDisplay = document.getElementById('tokenDisplay');
+
+            if (!prompt) {
+                alert("Please enter a fun prompt! 🎪");
+                return;
+            }
+
+            loader.style.display = 'block';
+            imageContainer.innerHTML = '';
+            tokenDisplay.textContent = '';
+
+            try {
+                const response = await fetch(
+                    `https://api-inference.huggingface.co/models/${MODEL_NAME}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            inputs: prompt,
+                            options: {
+                                wait_for_model: true // Ensures the model is loaded before generating
+                            }
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.error || `API Error: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'Generated Image';
+                img.style.maxWidth = '100%';
+
+                const token = `TOKEN-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+
+                loader.style.display = 'none';
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(img);
+                tokenDisplay.textContent = `🔑 Your Fun Token: ${token}`;
+
+            } catch (error) {
+                console.error('Error:', error);
+                loader.style.display = 'none';
+                imageContainer.innerHTML = `<p style="color: red; font-weight: bold;">😢 Error: ${error.message}</p>`;
+            }
+        }
+
+        document.getElementById('promptInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') generateImage();
+        });
+    </script>
+</body>
+</html>
