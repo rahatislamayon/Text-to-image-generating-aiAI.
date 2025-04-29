@@ -19,18 +19,25 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
             max-width: 600px;
             width: 90%;
+            position: relative;
         }
         .input-area {
             margin: 20px 0;
             display: flex;
+            flex-direction: column;
             gap: 10px;
         }
-        input[type="text"] {
-            flex: 1;
+        input[type="text"], select {
             padding: 10px;
             border-radius: 8px;
             border: 2px solid #4ecdc4;
             font-size: 16px;
+        }
+        .params {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
         }
         button {
             padding: 10px 20px;
@@ -55,16 +62,29 @@
             margin: 20px 0;
             min-height: 200px;
             text-align: center;
+            position: relative;
         }
         .token-display {
-            margin-top: 15px;
-            font-weight: bold;
-            color: #ff6b6b;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #888;
+            text-align: right;
         }
         img {
             border-radius: 15px;
             box-shadow: 0 0 15px rgba(0,0,0,0.2);
             margin-top: 15px;
+            max-width: 100%;
+        }
+        .download-btn {
+            margin-top: 10px;
+            background: #4ecdc4;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -73,24 +93,41 @@
         <h1>🎨 Fun AI Image Generator 🖌️</h1>
         <div class="input-area">
             <input type="text" id="promptInput" placeholder="Describe your crazy idea... 🚀">
+            <div class="params">
+                <input type="number" id="width" value="1024" min="256" max="2048" placeholder="Width">
+                <input type="number" id="height" value="1024" min="256" max="2048" placeholder="Height">
+                <input type="number" id="seed" placeholder="Seed (optional)">
+                <select id="model">
+                    <option value="flux">Flux Model</option>
+                    <option value="stable-diffusion">Stable Diffusion</option>
+                </select>
+            </div>
             <button onclick="generateImage()">Generate! ✨</button>
         </div>
-        <div class="loader" id="loader">Generating magic... 🌟</div>
+        <div class="loader" id="loader">Generating magic... ✨</div>
         <div id="imageContainer">
             <p>Your amazing image will appear here! 🌈</p>
+        </div>
+        <div class="action-buttons" id="actionButtons" style="display:none;">
+            <button class="download-btn" onclick="downloadImage()">Download Image 💾</button>
         </div>
         <div class="token-display" id="tokenDisplay"></div>
     </div>
 
     <script>
-        const API_KEY = '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'; // Your Hugging Face API key
-        const MODEL_NAME = 'stabilityai/stable-diffusion-2-1'; // Example model for image generation
+        let currentImageUrl = '';
+        let currentPrompt = '';
 
-        async function generateImage() {
+        function generateImage() {
             const prompt = document.getElementById('promptInput').value.trim();
+            const width = document.getElementById('width').value || 1024;
+            const height = document.getElementById('height').value || 1024;
+            const seed = document.getElementById('seed').value || Math.floor(Math.random() * 1000000);
+            const model = document.getElementById('model').value;
             const loader = document.getElementById('loader');
             const imageContainer = document.getElementById('imageContainer');
             const tokenDisplay = document.getElementById('tokenDisplay');
+            const actionButtons = document.getElementById('actionButtons');
 
             if (!prompt) {
                 alert("Please enter a fun prompt! 🎪");
@@ -98,53 +135,53 @@
             }
 
             loader.style.display = 'block';
-            imageContainer.innerHTML = '';
+            imageContainer.innerHTML = '<p>Creating your masterpiece... 🎨</p>';
             tokenDisplay.textContent = '';
+            actionButtons.style.display = 'none';
+            currentPrompt = prompt;
 
             try {
-                const response = await fetch(
-                    `https://api-inference.huggingface.co/models/${MODEL_NAME}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            inputs: prompt,
-                            options: {
-                                wait_for_model: true // Ensures the model is loaded before generating
-                            }
-                        })
-                    }
-                );
+                const encodedPrompt = encodeURIComponent(prompt);
+                currentImageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
+                
+                const img = new Image();
+                img.src = currentImageUrl;
+                img.alt = prompt;
+                
+                img.onload = () => {
+                    loader.style.display = 'none';
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(img);
+                    actionButtons.style.display = 'flex';
+                    
+                    // Generate and display token subtly
+                    const token = `TOKEN-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+                    tokenDisplay.textContent = `Fun ID: ${token}`;
+                };
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    const errorMessage = errorData.error || `API Error: ${response.status}`;
-                    throw new Error(errorMessage);
-                }
-
-                const blob = await response.blob();
-                const imageUrl = URL.createObjectURL(blob);
-
-                const img = document.createElement('img');
-                img.src = imageUrl;
-                img.alt = 'Generated Image';
-                img.style.maxWidth = '100%';
-
-                const token = `TOKEN-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-
-                loader.style.display = 'none';
-                imageContainer.innerHTML = '';
-                imageContainer.appendChild(img);
-                tokenDisplay.textContent = `🔑 Your Fun Token: ${token}`;
+                img.onerror = () => {
+                    throw new Error('Failed to generate image. Try a different prompt!');
+                };
 
             } catch (error) {
                 console.error('Error:', error);
                 loader.style.display = 'none';
-                imageContainer.innerHTML = `<p style="color: red; font-weight: bold;">😢 Error: ${error.message}</p>`;
+                imageContainer.innerHTML = `<p style="color: red; font-weight: bold;">😢 ${error.message}</p>`;
             }
+        }
+
+        function downloadImage() {
+            if (!currentImageUrl) return;
+            
+            const link = document.createElement('a');
+            link.href = currentImageUrl;
+            // Create a filename from the prompt (first 3 words) and current date
+            const filenameWords = currentPrompt.split(/\s+/).slice(0, 3).join('-');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.download = `ai-art-${filenameWords}-${dateStr}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         document.getElementById('promptInput').addEventListener('keypress', (e) => {
